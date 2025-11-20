@@ -6,6 +6,14 @@ from django.contrib.auth import authenticate
 import jwt, datetime
 from django.conf import settings
 from rest_framework.decorators import api_view,permission_classes
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import status
+from .serializers import ProductSerializer
+from .services import get_price_per_kg_in_inr
+from .models import Product
+from rest_framework.parsers import MultiPartParser, FormParser
 
 #Registration
 @api_view(['POST'])
@@ -65,6 +73,65 @@ def profile(request):
 @api_view(['POST'])
 def logout(request):
     return Response({"message":"Logout handled on client side"})
+
+#PRODUCT LISTING
+class CreateproductAPIView(APIView):
+    permission_classes=[IsAuthenticated]
+
+
+    def get(self, request):
+        return Response({"message": "Use POST to create product"})
+
+    def post(self, request):
+        user = request.user
+        serializer = ProductSerializer(data=request.data)
+
+        if serializer.is_valid():
+            product = serializer.save(owner=user)
+
+            #price_per_kg = get_price_per_kg_in_inr(product.product_name)
+            #product.market_price_per_kg_inr = price_per_kg
+            #product.save()
+
+            return Response({
+                "message": "Product stored successfully",
+                "product_type": product.type,
+                "product_name": product.product_name,
+                "date_of_listing": product.date_of_listing,
+                #"certification_file": product.certificate.url,
+                "amount_available_kg": str(product.amount_kg),
+                #"price_per_kg_inr": str(product.market_price_per_kg_inr),
+            }, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class SeedListingAPIView(APIView):
+    permission_classes=[IsAuthenticated]
+    def get(self,request):
+        seeds=Product.objects.filter(owner=request.user,type="seeds")
+        serializer=ProductSerializer(seeds, many=True)
+        return Response(serializer.data)
+
+class ByproductListingAPIView(APIView):
+    permission_classees=[IsAuthenticated]
+    def get(self,request):
+        items = Product.objects.filter(owner=request.user,type="byproduct")
+        serializer=ProductSerializer(items,many=True)
+        return Response(serializer.data)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
