@@ -92,9 +92,14 @@ class CreateproductAPIView(APIView):
         if serializer.is_valid():
             product = serializer.save(owner=user)
 
-            #price_per_kg = get_price_per_kg_in_inr(product.product_name)
-            #product.market_price_per_kg_inr = price_per_kg
-            #product.save()
+            # Update Inventory
+            from .models import Inventory
+            inventory, created = Inventory.objects.get_or_create(
+                product_name=product.product_name,
+                defaults={'type': product.type, 'total_quantity': 0}
+            )
+            inventory.total_quantity += product.amount_kg
+            inventory.save()
 
             return Response({
                 "message": "Product stored successfully",
@@ -121,6 +126,52 @@ class ByproductListingAPIView(APIView):
         items = Product.objects.filter(owner=request.user,type="byproduct")
         serializer=ProductSerializer(items,many=True)
         return Response(serializer.data)
+
+import decimal
+class SeedMarketView(APIView):
+    permission_classes=[IsAuthenticated]
+    def get(self, request):
+        from .models import Inventory
+        inventory = Inventory.objects.filter(total_quantity__gt=0, type="seeds")
+        data = [{"product_name": i.product_name, "type": i.type, "total_amount": i.total_quantity} for i in inventory]
+        return Response(data)
+
+class ByproductMarketView(APIView):
+    permission_classes=[IsAuthenticated]
+    def get(self, request):
+        from .models import Inventory
+        inventory = Inventory.objects.filter(total_quantity__gt=0, type="byproduct")
+        data = [{"product_name": i.product_name, "type": i.type, "total_amount": i.total_quantity} for i in inventory]
+        return Response(data)
+
+class BuyProductView(APIView):
+    permission_classes=[IsAuthenticated]
+    def post(self, request):
+        product_name = request.data.get('product_name')
+        quantity_to_buy = float(request.data.get('quantity', 0))
+
+        if quantity_to_buy <= 0:
+            return Response({"error": "Invalid quantity"}, status=status.HTTP_400_BAD_REQUEST)
+
+        from .models import Inventory
+        from django.db import transaction
+
+        try:
+            with transaction.atomic():
+                inventory = Inventory.objects.select_for_update().get(product_name=product_name)
+                
+                if inventory.total_quantity < quantity_to_buy:
+                    return Response(
+                        {"error": f"Insufficient quantity. Available: {inventory.total_quantity}kg"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                inventory.total_quantity -= decimal.Decimal(quantity_to_buy)
+                inventory.save()
+                
+                return Response({"message": f"Successfully purchased {quantity_to_buy}kg of {product_name}"})
+        except Inventory.DoesNotExist:
+            return Response({"error": "Product not found"}, status=status.HTTP_404_NOT_FOUND)
 
 
 

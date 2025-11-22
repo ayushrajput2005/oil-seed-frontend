@@ -125,14 +125,98 @@ function showAuth() {
 }
 
 function switchTab(tabName) {
-    document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
-    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.style.display = 'none');
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
 
-    document.getElementById(`${tabName}-tab`).style.display = 'block';
-    document.querySelector(`button[onclick="switchTab('${tabName}')"]`).classList.add('active');
+    // Show selected tab
+    const tabMap = {
+        'profile': 'profile-tab',
+        'create': 'create-tab',
+        'list': 'list-tab',
+        'market-seeds': 'seed-market-tab',
+        'market-byproducts': 'byproduct-market-tab'
+    };
+
+    const selectedTabId = tabMap[tabName];
+    if (selectedTabId) {
+        document.getElementById(selectedTabId).style.display = 'block';
+        // Highlight button (simple logic)
+        const buttons = document.querySelectorAll('.tab-btn');
+        if (tabName === 'profile') buttons[0].classList.add('active');
+        if (tabName === 'create') buttons[1].classList.add('active');
+        if (tabName === 'list') buttons[2].classList.add('active');
+        if (tabName === 'market-seeds') buttons[3].classList.add('active');
+        if (tabName === 'market-byproducts') buttons[4].classList.add('active');
+    }
 
     if (tabName === 'profile') fetchProfile();
     if (tabName === 'list') fetchProducts('seed'); // Default to seeds
+    if (tabName === 'market-seeds') fetchMarket('seeds');
+    if (tabName === 'market-byproducts') fetchMarket('byproducts');
+}
+
+async function fetchMarket(type) {
+    try {
+        const endpoint = type === 'seeds' ? 'market/seeds/' : 'market/byproducts/';
+        const res = await fetch(`${API_URL}/${endpoint}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            const listId = type === 'seeds' ? 'seed-market-list' : 'byproduct-market-list';
+            const list = document.getElementById(listId);
+            list.innerHTML = data.map(p => `
+                <div class="product-card">
+                    <h4>${p.product_name}</h4>
+                    <p>Type: ${p.type}</p>
+                    <p>Available: ${p.total_amount} kg</p>
+                    <div style="margin-top: 1rem;">
+                        <input type="number" id="buy-${p.product_name}" placeholder="Kg" style="width: 80px; margin-right: 0.5rem;">
+                        <button onclick="handleBuy('${p.product_name}', '${type}')" style="padding: 0.5rem;">Buy</button>
+                    </div>
+                </div>
+            `).join('');
+            if (data.length === 0) list.innerHTML = '<p>No products available in this market.</p>';
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function handleBuy(productName, type) {
+    const quantityInput = document.getElementById(`buy-${productName}`);
+    const quantity = quantityInput.value;
+
+    if (!quantity || quantity <= 0) {
+        showToast('Please enter a valid quantity', 'error');
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_URL}/buy/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                product_name: productName,
+                quantity: quantity
+            })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            showToast(data.message, 'success');
+            quantityInput.value = '';
+            fetchMarket(type); // Refresh correct market data
+        } else {
+            showToast(data.error || 'Purchase failed', 'error');
+        }
+    } catch (err) {
+        showToast('Network error', 'error');
+    }
 }
 
 async function fetchProfile() {

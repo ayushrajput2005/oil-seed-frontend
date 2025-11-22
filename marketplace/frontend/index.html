@@ -52,11 +52,23 @@
                     <button class="tab-btn active" onclick="switchTab('profile')">Profile</button>
                     <button class="tab-btn" onclick="switchTab('create')">Create Product</button>
                     <button class="tab-btn" onclick="switchTab('list')">My Products</button>
+                    <button class="tab-btn" onclick="switchTab('market-seeds')">Seed Market</button>
+                    <button class="tab-btn" onclick="switchTab('market-byproducts')">Byproduct Market</button>
                 </div>
 
                 <div id="profile-tab" class="tab-content">
                     <h3>User Profile</h3>
                     <div id="profile-data">Loading...</div>
+                </div>
+
+                <div id="seed-market-tab" class="tab-content" style="display: none;">
+                    <h3>Seed Market</h3>
+                    <div id="seed-market-list" class="grid-list"></div>
+                </div>
+
+                <div id="byproduct-market-tab" class="tab-content" style="display: none;">
+                    <h3>Byproduct Market</h3>
+                    <div id="byproduct-market-list" class="grid-list"></div>
                 </div>
 
                 <div id="create-tab" class="tab-content" style="display: none;">

@@ -1,5 +1,5 @@
+from .views import register, login, logout, profile, CreateproductAPIView, SeedListingAPIView, ByproductListingAPIView, SeedMarketView, ByproductMarketView, BuyProductView
 from django.urls import path
-from .views import register, login, logout, profile, CreateproductAPIView, SeedListingAPIView, ByproductListingAPIView
 
 urlpatterns=[
     path("register/",register),
@@ -9,4 +9,7 @@ urlpatterns=[
     path("create/",CreateproductAPIView.as_view()),
     path("seed/",SeedListingAPIView.as_view()),
     path("byproduct/",ByproductListingAPIView.as_view()),
+    path("market/seeds/",SeedMarketView.as_view()),
+    path("market/byproducts/",ByproductMarketView.as_view()),
+    path("buy/",BuyProductView.as_view()),
 ]
