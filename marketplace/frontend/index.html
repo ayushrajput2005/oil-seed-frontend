@@ -40,6 +40,7 @@
                     <form onsubmit="handleRegister(event)">
                         <input type="text" id="reg-username" placeholder="Username" required>
                         <input type="email" id="reg-email" placeholder="Email" required>
+                        <input type="tel" id="reg-mobile" placeholder="Mobile Number" required>
                         <input type="password" id="reg-password" placeholder="Password" required>
                         <button type="submit">Register</button>
                     </form>
@@ -81,10 +82,16 @@
                         <input type="text" id="prod-name" placeholder="Product Name" required>
                         <input type="date" id="prod-date" required>
                         <input type="number" id="prod-amount" placeholder="Amount (kg)" step="0.01" required>
+                        <input type="number" id="prod-price" placeholder="Price per kg (INR)" required step="0.01">
                         <div style="margin-bottom: 1rem;">
                             <label for="prod-cert"
                                 style="display: block; margin-bottom: 0.5rem; color: #4b5563;">Certificate (PDF)</label>
-                            <input type="file" id="prod-cert" accept=".pdf" required>
+                            <input type="file" id="prod-cert" accept="application/pdf">
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <label for="prod-image"
+                                style="display: block; margin-bottom: 0.5rem; color: #4b5563;">Product Image</label>
+                            <input type="file" id="prod-image" accept="image/*">
                         </div>
                         <button type="submit">Create Listing</button>
                     </form>

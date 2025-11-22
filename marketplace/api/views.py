@@ -21,8 +21,9 @@ def register(request):
     username=request.data.get("username")
     email=request.data.get("email")
     password=request.data.get("password")
+    mobile_no=request.data.get("mobile_no")
 
-    if not username or not email or not password:
+    if not username or not email or not password or not mobile_no:
         return Response({"error":"All fields required "},status=400)
 
     if User.objects.filter(username=username).exists():
@@ -32,6 +33,9 @@ def register(request):
         return Response({"error":"email already exists"},status=400)
 
     user=User.objects.create_user(username=username,email=email,password=password)
+    
+    from .models import UserProfile
+    UserProfile.objects.create(user=user, mobile_no=mobile_no)
 
     return Response({"message":"User registered successfully"})
 
@@ -92,15 +96,6 @@ class CreateproductAPIView(APIView):
         if serializer.is_valid():
             product = serializer.save(owner=user)
 
-            # Update Inventory
-            from .models import Inventory
-            inventory, created = Inventory.objects.get_or_create(
-                product_name=product.product_name,
-                defaults={'type': product.type, 'total_quantity': 0}
-            )
-            inventory.total_quantity += product.amount_kg
-            inventory.save()
-
             return Response({
                 "message": "Product stored successfully",
                 "product_type": product.type,
@@ -108,7 +103,8 @@ class CreateproductAPIView(APIView):
                 "date_of_listing": product.date_of_listing,
                 "certification_file": product.certificate.url,
                 "amount_available_kg": str(product.amount_kg),
-                #"price_per_kg_inr": str(product.market_price_per_kg_inr),
+                "price_per_kg_inr": str(product.market_price_per_kg_inr),
+                "image": product.image.url if product.image else None,
             }, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -131,46 +127,60 @@ import decimal
 class SeedMarketView(APIView):
     permission_classes=[IsAuthenticated]
     def get(self, request):
-        from .models import Inventory
-        inventory = Inventory.objects.filter(total_quantity__gt=0, type="seeds")
-        data = [{"product_name": i.product_name, "type": i.type, "total_amount": i.total_quantity} for i in inventory]
+        products = Product.objects.filter(type="seeds", amount_kg__gt=0)
+        data = []
+        for p in products:
+            data.append({
+                "id": p.id,
+                "product_name": p.product_name,
+                "type": p.type,
+                "amount_kg": p.amount_kg,
+                "price_per_kg": p.market_price_per_kg_inr,
+                "owner": p.owner.username,
+                "certificate": p.certificate.url if p.certificate else None,
+                "image": p.image.url if p.image else None
+            })
         return Response(data)
 
 class ByproductMarketView(APIView):
     permission_classes=[IsAuthenticated]
     def get(self, request):
-        from .models import Inventory
-        inventory = Inventory.objects.filter(total_quantity__gt=0, type="byproduct")
-        data = [{"product_name": i.product_name, "type": i.type, "total_amount": i.total_quantity} for i in inventory]
+        products = Product.objects.filter(type="byproduct", amount_kg__gt=0)
+        data = []
+        for p in products:
+            data.append({
+                "id": p.id,
+                "product_name": p.product_name,
+                "type": p.type,
+                "amount_kg": p.amount_kg,
+                "price_per_kg": p.market_price_per_kg_inr,
+                "owner": p.owner.username,
+                "certificate": p.certificate.url if p.certificate else None,
+                "image": p.image.url if p.image else None
+            })
         return Response(data)
 
 class BuyProductView(APIView):
     permission_classes=[IsAuthenticated]
     def post(self, request):
-        product_name = request.data.get('product_name')
-        quantity_to_buy = float(request.data.get('quantity', 0))
+        product_id = request.data.get('product_id')
 
-        if quantity_to_buy <= 0:
-            return Response({"error": "Invalid quantity"}, status=status.HTTP_400_BAD_REQUEST)
-
-        from .models import Inventory
         from django.db import transaction
 
         try:
             with transaction.atomic():
-                inventory = Inventory.objects.select_for_update().get(product_name=product_name)
+                product = Product.objects.select_for_update().get(id=product_id)
                 
-                if inventory.total_quantity < quantity_to_buy:
-                    return Response(
-                        {"error": f"Insufficient quantity. Available: {inventory.total_quantity}kg"},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+                quantity_to_buy = product.amount_kg
                 
-                inventory.total_quantity -= decimal.Decimal(quantity_to_buy)
-                inventory.save()
+                if quantity_to_buy <= 0:
+                     return Response({"error": "Product is out of stock"}, status=status.HTTP_400_BAD_REQUEST)
+
+                product.amount_kg = 0
+                product.save()
                 
-                return Response({"message": f"Successfully purchased {quantity_to_buy}kg of {product_name}"})
-        except Inventory.DoesNotExist:
+                return Response({"message": f"Successfully purchased {quantity_to_buy}kg of {product.product_name}"})
+        except Product.DoesNotExist:
             return Response({"error": "Product not found"}, status=status.HTTP_404_NOT_FOUND)
 
 

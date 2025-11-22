@@ -14,15 +14,16 @@ class Product(models.Model):
     amount_kg=models.DecimalField(max_digits=10,decimal_places=2)
 
     market_price_per_kg_inr=models.DecimalField(max_digits=10,decimal_places=2,null=True,blank=True)
+    image = models.ImageField(upload_to='product_images/', null=True, blank=True)
     created_at=models.DateTimeField(auto_now_add=True)
 
     created_at=models.DateTimeField(auto_now_add=True)
 
 
-class Inventory(models.Model):
-    product_name = models.CharField(max_length=100, unique=True)
-    type = models.CharField(max_length=20)
-    total_quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    mobile_no = models.CharField(max_length=15)
 
     def __str__(self):
-        return f"{self.product_name} ({self.total_quantity}kg)"
+        return self.user.username

@@ -77,12 +77,13 @@ async function handleRegister(e) {
     const username = document.getElementById('reg-username').value;
     const email = document.getElementById('reg-email').value;
     const password = document.getElementById('reg-password').value;
+    const mobile = document.getElementById('reg-mobile').value;
 
     try {
         const res = await fetch(`${API_URL}/register/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, email, password })
+            body: JSON.stringify({ username, email, password, mobile_no: mobile })
         });
         const data = await res.json();
 
@@ -167,13 +168,16 @@ async function fetchMarket(type) {
             const listId = type === 'seeds' ? 'seed-market-list' : 'byproduct-market-list';
             const list = document.getElementById(listId);
             list.innerHTML = data.map(p => `
-                <div class="product-card">
+                    <div class="product-card">
+                    ${p.image ? `<img src="${p.image}" alt="${p.product_name}" style="width:100%; height:150px; object-fit:cover; border-radius:4px; margin-bottom:0.5rem;">` : ''}
                     <h4>${p.product_name}</h4>
                     <p>Type: ${p.type}</p>
-                    <p>Available: ${p.total_amount} kg</p>
+                    <p>Farmer: ${p.owner}</p>
+                    <p>Price: ₹${p.price_per_kg}/kg</p>
+                    <p>Available: ${p.amount_kg} kg</p>
+                    ${p.certificate ? `<a href="${p.certificate}" target="_blank" style="display:inline-block; margin-bottom:0.5rem; color:var(--primary);">View Certificate</a>` : ''}
                     <div style="margin-top: 1rem;">
-                        <input type="number" id="buy-${p.product_name}" placeholder="Kg" style="width: 80px; margin-right: 0.5rem;">
-                        <button onclick="handleBuy('${p.product_name}', '${type}')" style="padding: 0.5rem;">Buy</button>
+                        <button onclick="handleBuy(${p.id}, '${p.product_name}', '${type}')" style="padding: 0.5rem;">Buy All</button>
                     </div>
                 </div>
             `).join('');
@@ -184,14 +188,8 @@ async function fetchMarket(type) {
     }
 }
 
-async function handleBuy(productName, type) {
-    const quantityInput = document.getElementById(`buy-${productName}`);
-    const quantity = quantityInput.value;
-
-    if (!quantity || quantity <= 0) {
-        showToast('Please enter a valid quantity', 'error');
-        return;
-    }
+async function handleBuy(productId, productName, type) {
+    if (!confirm(`Are you sure you want to buy the entire stock of ${productName}?`)) return;
 
     try {
         const res = await fetch(`${API_URL}/buy/`, {
@@ -201,15 +199,13 @@ async function handleBuy(productName, type) {
                 'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({
-                product_name: productName,
-                quantity: quantity
+                product_id: productId
             })
         });
         const data = await res.json();
 
         if (res.ok) {
             showToast(data.message, 'success');
-            quantityInput.value = '';
             fetchMarket(type); // Refresh correct market data
         } else {
             showToast(data.error || 'Purchase failed', 'error');
@@ -253,15 +249,21 @@ async function handleCreateProduct(e) {
     const name = document.getElementById('prod-name').value;
     const date = document.getElementById('prod-date').value;
     const amount = document.getElementById('prod-amount').value;
+    const price = document.getElementById('prod-price').value;
     const certFile = document.getElementById('prod-cert').files[0];
+    const imageFile = document.getElementById('prod-image').files[0];
 
     const formData = new FormData();
     formData.append('type', type);
     formData.append('product_name', name);
     formData.append('date_of_listing', date);
     formData.append('amount_kg', amount);
+    formData.append('market_price_per_kg_inr', price);
     if (certFile) {
         formData.append('certificate', certFile);
+    }
+    if (imageFile) {
+        formData.append('image', imageFile);
     }
 
     try {
@@ -301,6 +303,7 @@ async function fetchProducts(type) {
                 <div class="product-card">
                     <h4>${p.product_name}</h4>
                     <p>Type: ${p.type}</p>
+                    <p>Price: ₹${p.market_price_per_kg_inr}/kg</p>
                     <p>Amount: ${p.amount_kg} kg</p>
                     <p>Date: ${p.date_of_listing}</p>
                     ${p.certificate ? `<a href="${p.certificate}" target="_blank" style="display:inline-block; margin-top:0.5rem; color:var(--primary);">View Certificate</a>` : ''}
