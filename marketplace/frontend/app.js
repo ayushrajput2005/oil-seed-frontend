@@ -236,6 +236,7 @@ async function fetchProfile() {
             document.getElementById('profile-data').innerHTML = `
                 <p><strong>Username:</strong> ${data.username}</p>
                 <p><strong>Email:</strong> ${data.email}</p>
+                <p><strong>Mobile:</strong> ${data.mobile_no || 'N/A'}</p>
             `;
         }
     } catch (err) {
@@ -301,6 +302,7 @@ async function fetchProducts(type) {
             const list = document.getElementById('product-list');
             list.innerHTML = data.map(p => `
                 <div class="product-card">
+                    ${p.image ? `<img src="${p.image}" alt="${p.product_name}" style="width:100%; height:150px; object-fit:cover; border-radius:4px; margin-bottom:0.5rem;">` : ''}
                     <h4>${p.product_name}</h4>
                     <p>Type: ${p.type}</p>
                     <p>Price: ₹${p.market_price_per_kg_inr}/kg</p>

@@ -70,9 +70,17 @@ def login(request):
 @permission_classes([IsAuthenticated])
 def profile(request):
     user = request.user
+    from .models import UserProfile
+    try:
+        user_profile = UserProfile.objects.get(user=user)
+        mobile_no = user_profile.mobile_no
+    except UserProfile.DoesNotExist:
+        mobile_no = None
+
     return Response({
         "username":user.username,
         "email":user.email,
+        "mobile_no": mobile_no
     })
 
 #LOGOUT
@@ -113,14 +121,14 @@ class SeedListingAPIView(APIView):
     permission_classes=[IsAuthenticated]
     def get(self,request):
         seeds=Product.objects.filter(owner=request.user,type="seeds")
-        serializer=ProductSerializer(seeds, many=True)
+        serializer=ProductSerializer(seeds, many=True, context={'request': request})
         return Response(serializer.data)
 
 class ByproductListingAPIView(APIView):
-    permission_classees=[IsAuthenticated]
+    permission_classes=[IsAuthenticated]
     def get(self,request):
         items = Product.objects.filter(owner=request.user,type="byproduct")
-        serializer=ProductSerializer(items,many=True)
+        serializer=ProductSerializer(items,many=True, context={'request': request})
         return Response(serializer.data)
 
 import decimal
